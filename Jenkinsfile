@@ -65,22 +65,23 @@ pipeline {
       }
     }
 
-    stage('Fetch from Nexus') {
-      steps {
-        script {
-          def repoName = VERSION.endsWith('-SNAPSHOT') ? SNAPSHOTS_REPO : RELEASES_REPO
-          def groupPath = GROUP_ID.replace('.', '/')
-          def jarName = "${ARTIFACT_ID}-${VERSION}.jar"
-          def downloadUrl = "${NEXUS_BASE}/repository/${repoName}/${groupPath}/${ARTIFACT_ID}/${VERSION}/${jarName}"
-          echo "Downloading: ${downloadUrl}"
-          withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NUSER', passwordVariable: 'NPASS')]) {
-            sh """
-              curl -fSL -u "${NUSER}:${NPASS}" -o app.jar "${downloadUrl}"
-              ls -lh app.jar
-            """
-          }
+    stage('Fetch from Nexus (resolve SNAPSHOT via Maven)') {
+        steps {
+            // Uses mirror in settings.xml -> maven-public (which includes snapshots)
+            sh '''
+            export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
+            # This resolves the latest SNAPSHOT and copies the JAR to the current directory
+            mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
+                -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
+                -DoutputDirectory=. \
+                -DoverWrite=true
+
+            ls -lh *.jar
+            # Rename to app.jar for the next stage
+            mv ${ARTIFACT_ID}-*.jar app.jar
+            ls -lh app.jar
+            '''
         }
-      }
     }
 
     stage('Deploy (run the jar)') {
