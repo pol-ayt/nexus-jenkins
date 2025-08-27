@@ -2,16 +2,20 @@ pipeline {
   agent any
 
   environment {
+    // Tools (Manage Jenkins → Tools)
     JDK_HOME   = tool 'jdk17'
     MAVEN_HOME = tool 'maven-3.9'
 
-    GROUP_ID    = 'com.example'
-    ARTIFACT_ID = 'hello-world'
-    VERSION     = '1.0.0-SNAPSHOT'
+    // Nexus creds: creates $NEXUS_CREDS, $NEXUS_CREDS_USR, $NEXUS_CREDS_PSW
+    NEXUS_CREDS = credentials('nexus-creds')
 
-    NEXUS_BASE      = 'https://nexus.clarusway.us'
-    RELEASES_REPO   = 'maven-releases'
-    SNAPSHOTS_REPO  = 'maven-snapshots'
+    // GAV + Nexus repos
+    GROUP_ID       = 'com.example'
+    ARTIFACT_ID    = 'hello-world'
+    VERSION        = '1.0.0-SNAPSHOT'
+    NEXUS_BASE     = 'https://nexus.clarusway.us'
+    RELEASES_REPO  = 'maven-releases'
+    SNAPSHOTS_REPO = 'maven-snapshots'
   }
 
   stages {
@@ -19,40 +23,43 @@ pipeline {
       steps {
         sh '''
           export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
-          echo "Using:"
+          echo "Using toolchain:"
           java -version
           mvn -v
         '''
       }
     }
 
-    stage('Write Maven settings.xml') {
+    stage('Write Maven settings.xml (safe)') {
       steps {
-        withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NUSER', passwordVariable: 'NPASS')]) {
-          writeFile file: 'settings.xml', text: """
+        // Use heredoc so $NEXUS_CREDS_USR / $NEXUS_CREDS_PSW expand in the shell
+        sh '''
+          cat > settings.xml <<XML
 <settings>
   <servers>
     <server>
       <id>nexus-releases</id>
-      <username>${NUSER}</username>
-      <password>${NPASS}</password>
+      <username>$NEXUS_CREDS_USR</username>
+      <password>$NEXUS_CREDS_PSW</password>
     </server>
     <server>
       <id>nexus-snapshots</id>
-      <username>${NUSER}</username>
-      <password>${NPASS}</password>
+      <username>$NEXUS_CREDS_USR</username>
+      <password>$NEXUS_CREDS_PSW</password>
     </server>
   </servers>
   <mirrors>
     <mirror>
       <id>nexus-public</id>
       <mirrorOf>*</mirrorOf>
-      <url>${NEXUS_BASE}/repository/maven-public/</url>
+      <url>$NEXUS_BASE/repository/maven-public/</url>
     </mirror>
   </mirrors>
 </settings>
-"""
-        }
+XML
+          # Optional: show sanitized preview (mask password)
+          sed -e "s#<password>.*</password>#<password>***</password>#g" settings.xml | head -n 40
+        '''
       }
     }
 
@@ -66,33 +73,30 @@ pipeline {
     }
 
     stage('Fetch from Nexus (resolve SNAPSHOT via Maven)') {
-        steps {
-            // Uses mirror in settings.xml -> maven-public (which includes snapshots)
-            sh '''
-            export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
-            # This resolves the latest SNAPSHOT and copies the JAR to the current directory
-            mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
-                -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
-                -DoutputDirectory=. \
-                -DoverWrite=true
+      steps {
+        // maven-dependency-plugin resolves timestamped SNAPSHOTs automatically
+        sh '''
+          export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
+          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
+             -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
+             -DoutputDirectory=. \
+             -DoverWrite=true
 
-            ls -lh *.jar
-            # Rename to app.jar for the next stage
-            mv ${ARTIFACT_ID}-*.jar app.jar
-            ls -lh app.jar
-            '''
-        }
+          # Rename the downloaded jar for the next stage
+          mv ${ARTIFACT_ID}-*.jar app.jar
+          ls -lh app.jar
+        '''
+      }
     }
 
     stage('Run app (simple)') {
-        steps {
-            sh '''
-            export PATH="$JDK_HOME/bin:$PATH"
-            java -jar app.jar
-            '''
-        }
+      steps {
+        sh '''
+          export PATH="$JDK_HOME/bin:$PATH"
+          java -jar app.jar
+        '''
+      }
     }
-    
   }
 
   post {
