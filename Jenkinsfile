@@ -84,18 +84,15 @@ pipeline {
         }
     }
 
-    stage('Deploy (run the jar)') {
-      steps {
-        sh '''
-          export PATH="$JDK_HOME/bin:$PATH"
-          nohup java -jar app.jar > app.log 2>&1 &
-          sleep 2
-          pgrep -fl 'java.*app.jar' || (echo "App failed to start" && exit 1)
-          echo "Last 20 lines of app.log:"
-          tail -n 20 app.log || true
-        '''
-      }
+    stage('Run app (simple)') {
+        steps {
+            sh '''
+            export PATH="$JDK_HOME/bin:$PATH"
+            java -jar app.jar
+            '''
+        }
     }
+    
   }
 
   post {
