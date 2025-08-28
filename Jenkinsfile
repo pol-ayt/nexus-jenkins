@@ -14,8 +14,6 @@ pipeline {
     ARTIFACT_ID    = 'hello-world'
     VERSION        = '1.0.0-SNAPSHOT'
     NEXUS_BASE     = 'https://nexus.clarusway.us'
-    RELEASES_REPO  = 'maven-releases' // For future use
-    SNAPSHOTS_REPO = 'maven-snapshots' // For future use
   }
 
   stages {
@@ -73,9 +71,8 @@ XML
 
     stage('Fetch from Nexus (resolve SNAPSHOT via Maven)') {
       steps {
-        // maven-dependency-plugin resolves timestamped SNAPSHOTs automatically
         sh '''
-          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
+          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \ 
              -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
              -DoutputDirectory=. \
              -DoverWrite=true
