@@ -72,7 +72,7 @@ XML
     stage('Fetch from Nexus (resolve SNAPSHOT via Maven)') {
       steps {
         sh '''
-          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \ 
+          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
              -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
              -DoutputDirectory=. \
              -DoverWrite=true
