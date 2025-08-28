@@ -57,6 +57,7 @@ pipeline {
   </mirrors>
 </settings>
 XML
+          chmod 600 settings.xml
           # Optional: show sanitized preview (mask password)
           sed -e "s#<password>.*</password>#<password>***</password>#g" settings.xml | head -n 40
         '''
