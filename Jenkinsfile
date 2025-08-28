@@ -1,11 +1,11 @@
 pipeline {
   agent any
+  tools {
+    jdk   'jdk17'
+    maven 'maven-3.9'
+  }
 
-  environment {
-    // Tools (Manage Jenkins → Tools)
-    JDK_HOME   = tool 'jdk17'
-    MAVEN_HOME = tool 'maven-3.9'
-
+ environment {
     // Nexus creds: creates $NEXUS_CREDS, $NEXUS_CREDS_USR, $NEXUS_CREDS_PSW
     NEXUS_CREDS = credentials('nexus-creds')
 
@@ -22,8 +22,7 @@ pipeline {
     stage('Prep Java & Maven') {
       steps {
         sh '''
-          export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
-          echo "Using toolchain:"
+          echo "Using toolchain (from tools{}):"
           java -version
           mvn -v
         '''
@@ -67,7 +66,6 @@ XML
     stage('Build & Publish (deploy)') {
       steps {
         sh '''
-          export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
           mvn -s settings.xml -DskipTests clean deploy
         '''
       }
@@ -77,7 +75,6 @@ XML
       steps {
         // maven-dependency-plugin resolves timestamped SNAPSHOTs automatically
         sh '''
-          export PATH="$JDK_HOME/bin:$MAVEN_HOME/bin:$PATH"
           mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
              -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
              -DoutputDirectory=. \
@@ -93,7 +90,6 @@ XML
     stage('Run app (simple)') {
       steps {
         sh '''
-          export PATH="$JDK_HOME/bin:$PATH"
           java -jar app.jar
         '''
       }
