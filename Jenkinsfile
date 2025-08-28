@@ -101,6 +101,7 @@ XML
 
   post {
     always {
+      sh 'shred -u settings.xml 2>/dev/null || rm -f settings.xml'
       archiveArtifacts artifacts: 'app.jar, app.log', onlyIfSuccessful: false
     }
   }
