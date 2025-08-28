@@ -14,6 +14,8 @@ pipeline {
     ARTIFACT_ID    = 'hello-world'
     VERSION        = '1.0.0-SNAPSHOT'
     NEXUS_BASE     = 'https://nexus.clarusway.us'
+    RELEASES_REPO  = 'maven-releases' // For future use
+    SNAPSHOTS_REPO = 'maven-snapshots' // For future use
   }
 
   stages {
@@ -69,19 +71,11 @@ XML
       }
     }
 
-// Normally, plugins are declared in your pom.xml, but Maven also lets you call any plugin directly by its coordinates: groupId:artifactId:version:goal. 'maven-dependency-plugin' is a very common, reliable way to fetch artifacts from Nexus in CI. Curl and Nexus REST API options are also available.
-
-// https://maven.apache.org/plugins/maven-dependency-plugin/copy-mojo.html?utm_source=chatgpt.com
-
-// org.apache.maven.plugins -> the groupId for all official Apache Maven plugins.
-// maven-dependency-plugin -> the artifactId
-// 3.6.1 -> the plugin version
-// copy -> the plugin goal
-
     stage('Fetch from Nexus (resolve SNAPSHOT via Maven)') {
       steps {
+        // maven-dependency-plugin resolves timestamped SNAPSHOTs automatically
         sh '''
-          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \ 
+          mvn -s settings.xml -q org.apache.maven.plugins:maven-dependency-plugin:3.6.1:copy \
              -Dartifact="$GROUP_ID:$ARTIFACT_ID:$VERSION:jar" \
              -DoutputDirectory=. \
              -DoverWrite=true
