@@ -13,7 +13,7 @@ pipeline {
     GROUP_ID       = 'com.example'
     ARTIFACT_ID    = 'hello-world'
     VERSION        = '1.0.0'
-    NEXUS_BASE     = 'https://nexus.clarusway.us'
+    NEXUS_BASE     = 'https://nexus.clarusway.click'
   }
 
   stages {
